@@ -2,16 +2,6 @@
 
 This repository is a **code skeleton** for the paper *Diffract and Conquer: Hyperspectral Imaging from Any RGB Camera via Optical Encoding and Learning* (IJCAI). The system combines **diffractive optical encoding** (a 4×4 array of harmonic diffractive lenses, Bayer CFA, up to 48 raw channels) with **neural reconstruction** of the hyperspectral cube (31 bands, 400–700 nm, 10 nm step).
 
-## Suggested GitHub repository names
-
-| Name | Rationale |
-|------|-----------|
-| **`diffract-and-conquer-hsi`** | Matches the paper title; easy to discover. |
-| **`ggpir-hsi`** | Short; named after GGPIR (Generated Gaussian Primitives Image Restoration). |
-| **`hdl-snapshot-hsi`** | Emphasizes harmonic diffractive lenses and snapshot capture. |
-
-**Recommendation:** use **`diffract-and-conquer-hsi`** as the public repo name. The installable Python package is named `diffract-conquer-hsi` in `pyproject.toml`.
-
 ## Repository layout
 
 ```
