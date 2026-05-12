@@ -1,0 +1,37 @@
+experiment:
+  name: ggpir_ntire
+  seed: 42
+
+data:
+  dataset: ntire2022
+  train_split: train
+  val_split: val
+  num_bands: 31
+  wavelength_range_nm: [400, 700]
+  band_step_nm: 10
+
+optical:
+  grid_h: 4
+  grid_w: 4
+  bayer_channels: 3
+  raw_channels: 48
+  focal_length_mm: 20.0
+  object_image_distance_mm: 40.0
+  aperture_mm: 2.8
+
+model:
+  name: ggpir
+  gaussian_layers: 7
+  projector_gate: "x_plus_x_conv_sq"
+  use_independent_generators: true
+
+training:
+  batch_size: 8
+  epochs: 100
+  lr: 1.0e-4
+  weight_decay: 0.0
+
+metrics:
+  - sam
+  - psnr
+  - ssim
