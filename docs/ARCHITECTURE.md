@@ -1,78 +1,78 @@
-# Архитектура репозитория (IJCAI: Diffract and Conquer)
+# Repository architecture (IJCAI: Diffract and Conquer)
 
-Документ описывает **логическую** архитектуру, соответствующую разделам статьи, и сопоставление с каталогами `src/diffract_conquer_hsi/`.
+This document summarizes the **logical** architecture aligned with the paper and maps it to `src/diffract_conquer_hsi/`.
 
-## Общий поток
+## End-to-end flow
 
 ```mermaid
 flowchart LR
-  subgraph optics [Оптика]
-    HDL[4x4 HDL массив]
+  subgraph optics [Optics]
+    HDL[4x4 HDL array]
     Bayer[Bayer CFA]
-    Sensor[Сенсор RGB]
+    Sensor[RGB sensor]
   end
-  subgraph alg [Алгоритмы и обработка]
-    Cover[Жадный отбор высот h и порядков m]
-    Sim[Прямая модель PSF + интеграл по lambda]
-    Noise[Пуассон + Гаусс]
-    Norm[Нормализация по train]
+  subgraph alg [Algorithms and processing]
+    Cover[Greedy selection of heights h and orders m]
+    Sim[Forward model: PSF + integral over lambda]
+    Noise[Poisson + Gaussian]
+    Norm[Train-set normalization]
   end
-  subgraph nn [Нейросети]
-    Proj[Спектральный проектор + gate]
+  subgraph nn [Neural networks]
+    Proj[Spectral projector + gate]
     GPL[Gaussian Primitives Layer]
-    Gen[Гиперсеть параметров GPL]
-    Rearr[Спектральный rearranger]
+    Gen[Hypernetwork for GPL parameters]
+    Rearr[Spectral rearranger]
   end
-  Scene[Спектральный куб сцены] --> HDL
+  Scene[Scene hyperspectral cube] --> HDL
   HDL --> Bayer --> Sensor
   Cover -.-> HDL
-  Scene --> Sim --> Noise --> Raw[48 каналов]
+  Scene --> Sim --> Noise --> Raw[48 channels]
   Raw --> Norm --> Proj --> Gen
   Gen --> GPL
   Proj --> GPL
-  GPL --> Rearr --> HSI[31 спектральных полос]
+  GPL --> Rearr --> HSI[31 spectral bands]
 ```
 
-## Слой 1: оптическое кодирование
+## Layer 1: optical encoding
 
-| Идея из статьи | Файлы / модули |
-|----------------|----------------|
-| Гармонические дифракционные линзы, три дифракционных порядка, согласование с окнами Bayer | `optical/psf.py`, `configs/default.yaml` (`optical.*`) |
-| Формирование изображения \(I_{d,c}\) (уравнение 3) | `optical/forward_model.py` |
-| PSF через фазовую пластинку и распространение (4–5) | `optical/psf.py` |
-| Покрытие 31 длины волны, задача (8), жадный алгоритм | `optical/lens_selection.py` |
+| Paper idea | Files / modules |
+|------------|-----------------|
+| Harmonic diffractive lenses, three diffraction orders, alignment with Bayer passbands | `optical/psf.py`, `configs/default.yaml` (`optical.*`) |
+| Image formation \(I_{d,c}\) (Eq. 3) | `optical/forward_model.py` |
+| PSF via phase plate and propagation (Eqs. 4–5) | `optical/psf.py` |
+| Coverage of 31 wavelengths, problem (8), greedy algorithm | `optical/lens_selection.py` |
 
-## Слой 2: подготовка данных
+## Layer 2: data preparation
 
-| Идея | Файлы |
+| Idea | Files |
 |------|--------|
-| Датасеты NTIRE 2022, ICVL, CAVE, CZ-HSDB | `data/datasets.py` |
-| RGB-only baseline vs симуляция «нашей» камеры | `scripts/simulate_forward.py`, `optical/forward_model.py` |
-| Нормализация только по train | `data/transforms.py` |
+| NTIRE 2022, ICVL, CAVE, CZ-HSDB | `data/datasets.py` |
+| RGB-only baseline vs simulation of “our” camera | `scripts/simulate_forward.py`, `optical/forward_model.py` |
+| Normalization from training split only | `data/transforms.py` |
 
-## Слой 3: реконструкция (нейросети)
+## Layer 3: reconstruction (neural)
 
-| Компонент | Назначение | Файлы |
-|-----------|------------|--------|
-| Спектральный проектор | Локальное окно по спектру, компенсация аберраций, gate \(x + x \cdot \mathrm{conv}^2\) | `models/gaussian_primitives.py` (`SpectralProjectorGate`), `models/ggpir.py` |
-| FFN bottleneck | Сжатие в малую размерность перед rearrange (как в Fig. 4) | `models/gaussian_primitives.py` (`SpectralFFN`) |
-| Gaussian Primitives | Уравнение (10), комбинация 1D-гауссиан по входным каналам | `models/gaussian_primitives.py` |
-| Гиперсеть \(G(\cdot,\theta)\) | В статье — генерация параметров GPL по пикселю; в скелете — задел под пер-канальные генераторы | `models/ggpir.py` (комментарий), будущий модуль `models/hypernet.py` |
-| Спектральный rearranger | Восстановление 31 канала, второй gate | `models/ggpir.py` |
-| Базeline cmKAN++ | Проектор + rearranger без полной GPL-ветки | `models/cmkan_baseline.py` |
+| Component | Role | Files |
+|-----------|------|--------|
+| Spectral projector | Local spectral window, aberration compensation, gate \(x + x \cdot \mathrm{conv}^2\) | `models/gaussian_primitives.py` (`SpectralProjectorGate`), `models/ggpir.py` |
+| FFN bottleneck | Low-dimensional bottleneck before rearrange (Fig. 4) | `models/gaussian_primitives.py` (`SpectralFFN`) |
+| Gaussian primitives | Eq. (10): 1D Gaussians over input channels | `models/gaussian_primitives.py` |
+| Hypernetwork \(G(\cdot,\theta)\) | Paper: per-pixel GPL parameters; skeleton: hook for per-channel generators | `models/ggpir.py` (comments), future `models/hypernet.py` |
+| Spectral rearranger | Restore 31 channels, second gate | `models/ggpir.py` |
+| cmKAN++ baseline | Projector + rearranger without full GPL branch | `models/cmkan_baseline.py` |
 
-## Слой 4: обучение и оценка
+## Layer 4: training and evaluation
 
-| Задача | Файлы |
-|--------|--------|
-| Конфигурация эксперимента | `configs/default.yaml`, `processing/config.py` |
-| Метрики SAM, PSNR | `processing/metrics.py` |
-| Обучение / валидация | `training/train.py`, `training/evaluate.py` |
+| Task | Files |
+|------|--------|
+| Experiment configuration | `configs/default.yaml`, `processing/config.py` |
+| SAM, PSNR metrics | `processing/metrics.py` |
+| Training / validation | `training/train.py`, `training/evaluate.py` |
 
-## Что намеренно не реализовано в скелете
+## Deliberately out of scope in this skeleton
 
-- Полный FFT / angular spectrum для уравнения (5) и калибровка под CMV4000.
-- Пиксельные гиперсети и точное воспроизведение cmKANlight (Nikonorov et al., 2025).
-- SSIM и загрузка официальных сплитов NTIRE — добавить в `processing/metrics.py` и `data/datasets.py`.
+- Full FFT / angular spectrum for Eq. (5) and CMV4000 calibration.
+- Pixel-wise hypernetworks and a faithful cmKANlight port (Nikonorov et al., 2025).
+- SSIM and official NTIRE splits — add in `processing/metrics.py` and `data/datasets.py`.
 
-Эти пункты — следующие шаги после фиксации интерфейсов тензоров `[B, C, H, W]` для сырого 48-канального ввода и GT 31-полосного куба.
+Next steps: freeze tensor layouts `[B, C, H, W]` for 48-channel raw input and 31-band ground-truth cubes, then implement the items above.

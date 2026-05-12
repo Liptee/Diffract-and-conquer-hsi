@@ -1,48 +1,48 @@
-# Diffract and Conquer — гиперспектральная съёмка с обычной RGB-камеры
+# Diffract and Conquer — Hyperspectral Imaging from a Commodity RGB Camera
 
-Репозиторий — **скелет кода** под статью *«Diffract and Conquer: Hyperspectral Imaging from Any RGB Camera via Optical Encoding and Learning»* (IJCAI). Система сочетает **дифракционное кодирование** (матрица гармонических дифракционных линз 4×4, Bayer, до 48 сырых каналов) и **нейросетевую реконструкцию** спектрального куба (31 полоса, 400–700 нм, шаг 10 нм).
+This repository is a **code skeleton** for the paper *Diffract and Conquer: Hyperspectral Imaging from Any RGB Camera via Optical Encoding and Learning* (IJCAI). The system combines **diffractive optical encoding** (a 4×4 array of harmonic diffractive lenses, Bayer CFA, up to 48 raw channels) with **neural reconstruction** of the hyperspectral cube (31 bands, 400–700 nm, 10 nm step).
 
-## Предлагаемое имя репозитория на GitHub
+## Suggested GitHub repository names
 
-| Вариант | Зачем |
-|--------|--------|
-| **`diffract-and-conquer-hsi`** | Прямая отсылка к названию статьи, понятно для поиска. |
-| **`ggpir-hsi`** | Коротко, по имени метода GGPIR (Generated Gaussian Primitives Image Restoration). |
-| **`hdl-snapshot-hsi`** | Акцент на оптике (harmonic diffractive lenses) и snapshot-режиме. |
+| Name | Rationale |
+|------|-----------|
+| **`diffract-and-conquer-hsi`** | Matches the paper title; easy to discover. |
+| **`ggpir-hsi`** | Short; named after GGPIR (Generated Gaussian Primitives Image Restoration). |
+| **`hdl-snapshot-hsi`** | Emphasizes harmonic diffractive lenses and snapshot capture. |
 
-Рекомендация: **`diffract-and-conquer-hsi`** как основной публичный URL; внутри PyPI-пакет уже назван `diffract-conquer-hsi` (см. `pyproject.toml`).
+**Recommendation:** use **`diffract-and-conquer-hsi`** as the public repo name. The installable Python package is named `diffract-conquer-hsi` in `pyproject.toml`.
 
-## Структура репозитория
+## Repository layout
 
 ```
-configs/           # гиперпараметры эксперимента и оптической модели
-docs/              # архитектура и потоки данных
-scripts/           # утилиты (симуляция прямой модели и т.д.)
+configs/           # experiment and optical-model hyperparameters
+docs/              # architecture and data-flow notes
+scripts/           # utilities (forward-model simulation, etc.)
 src/diffract_conquer_hsi/
-  optical/         # оптика: отбор линз, PSF, прямая модель (уравнения 3–6)
-  data/            # датасеты NTIRE / ICVL / CAVE / CZ-HSDB, нормализация
-  models/          # GGPIR, cmKAN++, Gaussian Primitives, спектральные блоки
-  processing/      # метрики SAM / PSNR, конфиги
-  training/        # train / eval (заглушки под полную реализацию)
+  optical/         # lens selection, PSF, forward model (Eqs. 3–6)
+  data/            # NTIRE / ICVL / CAVE / CZ-HSDB, normalization
+  models/          # GGPIR, cmKAN++, Gaussian primitives, spectral blocks
+  processing/      # SAM / PSNR metrics, config helpers
+  training/        # train / eval stubs until full pipeline is wired
 tests/
 ```
 
-## Компоненты (по статье)
+## Components (from the paper)
 
-### Обработка и алгоритмы (не нейросети)
+### Processing and algorithms (non-neural)
 
-- **Оптическая модель**: интегрирование сцены с PSF каждой HDL и чувствительностью Bayer \(T_c(\lambda)\) (стр. 3–4).
-- **Шум**: сумма пуассоновской и гауссовской компонент (уравнение 6).
-- **Выбор высот микрельефа**: дискретизация кандидатов, **жадное максимальное покрытие** спектральной сетки 31 полосы (разд. 3.1, уравнение 8).
-- **Метрики**: SAM, PSNR, SSIM (разд. 4.1); нормализация по обучающей выборке послойно.
+- **Optical model:** scene integration with per-HDL PSF and Bayer sensitivity \(T_c(\lambda)\) (Sec. 3–4).
+- **Noise:** Poisson plus Gaussian components (Eq. 6).
+- **Microrelief selection:** candidate discretization and **greedy maximum coverage** over the 31-band grid (Sec. 3.1, Eq. 8).
+- **Metrics:** SAM, PSNR, SSIM (Sec. 4.1); per-band normalization using training-set statistics.
 
-### Нейросети
+### Neural networks
 
-- **Базовая ветка cmKAN++**: спектральный проектор и rearranger вокруг упрощённого «тела» (разд. 3.2, отсылка к cmKANlight).
-- **GGPIR**: спектральный проектор с нелинейностью \(x + x \cdot \mathrm{conv2d}(x)^2\), bottleneck FFN, **слой порождённых гауссовых примитивов** (уравнение 10), расширение обратно в 31 канал.
-- **Расширение до полной статьи**: независимые гиперсети на каждый выходной канал Gaussian layer, блоки Illumination Estimator / Color Transformer — см. `docs/ARCHITECTURE.md`.
+- **cmKAN++ baseline:** spectral projector and rearranger around a simplified backbone (Sec. 3.2; see cmKANlight).
+- **GGPIR:** spectral projector with \(x + x \cdot \mathrm{conv2d}(x)^2\), FFN bottleneck, **generated Gaussian primitives** (Eq. 10), expansion back to 31 channels.
+- **Full paper variant:** independent hypernetworks per Gaussian output channel, Illumination Estimator / Color Transformer blocks — see `docs/ARCHITECTURE.md`.
 
-## Быстрый старт
+## Quick start
 
 ```bash
 cd /path/to/repo
@@ -52,9 +52,9 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
-Скрипты `training/train.py` и `scripts/simulate_forward.py` пока **заглушки**: их нужно связать с датасетами и полной реализацией Fresnel / PSF.
+`training/train.py` and `scripts/simulate_forward.py` are still **stubs**; connect them to datasets and a full Fresnel / PSF implementation.
 
-## Ссылка на публикацию
+## Citation
 
 ```bibtex
 @inproceedings{pronin2026diffract,
@@ -62,12 +62,12 @@ pytest -q
   author    = {Pronin, Alexey and Vladimirov, Daniil and Korepanov, Andrei and others},
   booktitle = {Proceedings of IJCAI},
   year      = {2026},
-  note      = {Please replace with official BibTeX from proceedings}
+  note      = {Replace with official proceedings BibTeX when available}
 }
 ```
 
-Файл `IJCAI.pdf` в корне не включён в шаблон релиза; при публикации репозитория либо приложите ссылку на камеру-редакцию / arXiv, либо не коммитьте PDF из-за размера и прав.
+`IJCAI.pdf` in the repo root is listed in `.gitignore` so it is not pushed by default. For a public release, link to the camera-ready or arXiv version instead of committing large PDFs.
 
-## Лицензия
+## License
 
-MIT — см. `LICENSE`. При необходимости согласуйте с авторами и грантодателем (Ministry of Economic Development of the Russian Federation, указано в статье).
+MIT — see `LICENSE`. Confirm with authors and funders if needed (e.g. Ministry of Economic Development of the Russian Federation, as acknowledged in the paper).
